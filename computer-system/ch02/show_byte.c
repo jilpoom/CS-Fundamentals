@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 typedef unsigned char *byte_pointer;
 
@@ -8,11 +9,22 @@ void show_float(float x);
 void show_pointer(void *x);
 void test_show_bytes(int val);
 void test_show_pointer(int hex);
+void test_show_string(char *s);
+void test_show_endian(int hex);
 
 int main(void) 
 {
+    printf("show int, float, pointer bytes:\n");
     test_show_bytes(12345);
-    test_show_pointer(0x87654321);
+    printf("\n");
+
+    printf("show OS endian type");
+    test_show_endian(0x87654321);
+    printf("\n");
+    
+    printf("show string bytes");
+    test_show_string("12345");
+    printf("\n");
 }
 
 void test_show_bytes(int val) 
@@ -25,12 +37,17 @@ void test_show_bytes(int val)
     show_pointer(pval);
 }
 
-void test_show_pointer(int hex)
+void test_show_endian(int hex)
 {
     byte_pointer valp = (byte_pointer) &hex;
     show_bytes(valp, 1);
     show_bytes(valp, 2);
     show_bytes(valp, 3);
+}
+
+void test_show_string(char *s)
+{
+    show_bytes((byte_pointer) s, strlen(s) + 1);
 }
 
 void show_bytes(byte_pointer start, int len) 

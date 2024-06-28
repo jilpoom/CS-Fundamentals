@@ -5,8 +5,8 @@
     Two's Complement Addition
     - signed int x, y를 덧셈할 경우, w를 비트수라고 할 때, 다음의 3가지 경우로 나눌 수 있다.
         - 2^{w - 1} <= x + y -> Negative Overflow 
-        - -2^{w - 1} <= x + y < 2^{w - 1} - Normal
-        - x + y < -2^{w - 1} - Positive Overflow
+        - -2^{w - 1} <= x + y < 2^{w - 1} -> Normal
+        - x + y < -2^{w - 1} -> Positive Overflow
 */
 
 typedef unsigned char *byte_pointer;
@@ -55,14 +55,14 @@ int buggy_test_tadd_ok(int x, int y)
 {
     int sum = x + y;
 
-     return (sum - x == y) && (sum - y == x);
+    return (sum - x == y) && (sum - y == x);
 }
 
 /* WARNING: This is buggy code */
 /* 
     int x, y를 뺄 떄, 오버플로우가 일어나는지 확인하는 함수 
     x 가 INT_MIN이고, y = 1이라면, INT_MIN + (-1) == INT_MAX이므로 Positive Overflow를 발생시킨다.
-    즉, x가 INT_MIN인 경우 y는 정의될 수 없다.(어떤 양수 값을 빼든, Positive Overflow가 발생한다.)
+    즉, x가 INT_MIN인 경우 양수 y는 정의될 수 없다.(어떤 양수 값을 빼든, Positive Overflow가 발생한다.)
 */
 int buggy_test_tsub_ok(int x, int y)
 {

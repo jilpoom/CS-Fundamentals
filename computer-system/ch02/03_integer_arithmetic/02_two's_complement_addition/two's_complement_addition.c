@@ -55,7 +55,7 @@ int buggy_test_tadd_ok(int x, int y)
 {
     int sum = x + y;
 
-     return (sum - x == y) && (sum - y == x);
+    return (sum - x == y) && (sum - y == x);
 }
 
 /* WARNING: This is buggy code */

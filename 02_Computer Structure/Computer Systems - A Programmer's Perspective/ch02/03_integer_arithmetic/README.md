@@ -34,12 +34,6 @@ $$ -2^w \le x + y \le 2^{w} -2 $$
 
 ### 오버플로우
 
-    Two's Complement Addition
-    - signed int x, y를 덧셈할 경우, w를 비트수라고 할 때, 다음의 3가지 경우로 나눌 수 있다.
-        - 2^{w - 1} <= x + y -> Negative Overflow
-        - -2^{w - 1} <= x + y < 2^{w - 1} -> Normal
-        - x + y < -2^{w - 1} -> Positive Overflow
-
 Singed Int $x$, $y$를 덧셈할 경우, $w$를 비트 수라고 할 때, 다음의 3가지 경우로 나눌 수 있다.
 
 -   Negative Overflow
@@ -82,22 +76,23 @@ $$ -x = \space \sim x + 1 $$
 ## 부호 없는 정수의 곱셈
 
 부호 없는 정수인 $x$, $y$는 $0 \le x, \space y \le 2^{w} - 1$의 범위 내에 있고, $x \times y$는 다음을 만족한다.
-$$ 0 \le x \times y \le 2^{2w} - 2^{w + 1} + 1$$
 
-C에서는 이를 표현하려면 최대 $2w$의 비트가 필요하므로, 부호 없는 곱셈에서는 정수 곱의 하위 $w$ 비트 값을 반환하도록 정의되어 있다. 부호 없는 정수 간의 곱셈을 $*u\_w$ 라고 할 때, 다음을 만족한다.
+$$0 \le x \times y \le 2^{2w} - 2^{w + 1} + 1$$
 
-$$ x \space *u_w y = (x \times y) \space mod \space2^w$$
+C에서는 이를 표현하려면 최대 $2w$의 비트가 필요하므로, 부호 없는 곱셈에서는 정수 곱의 하위 $w$ 비트 값을 반환하도록 정의되어 있다. 부호 없는 정수 간의 곱셈을 $*u_w$ 라고 할 때, 다음을 만족한다.
+
+$$x \space *u_w y = (x \times y) \space mod \space2^w$$
 
 
 
 ## 2의 보수 간의 곱셈
 부호 있는 정수(Signed Integer) $x$, $y$의 범위는 다음과 같다.
 
-$$ -2^{w-1} \le x, y \le 2^{w - 1} - 1$$
+$$-2^{w-1} \le x, y \le 2^{w - 1} - 1$$
 
 $x$, $y$ 간의 곱셈의 범위는 다음과 같다.
 
-$$ -2^{2w - 2} + 2^{w - 1} \le x \times y \le 2^{2w - 2}$$
+$$-2^{2w - 2} + 2^{w - 1} \le x \times y \le 2^{2w - 2}$$
 
 이는 최대 $2w$ 비트수가 부호 있는 정수의 곱을 나타낼 때 필요하다는 의미이다.
 

@@ -15,5 +15,5 @@
 ## 진행 상황
 | No | Description | Date | branch | note |
 | -- | -- | -- | -- | -- |
-| 01 | Computer Systems - A programmer's Perspective, Ch02 | ~24-06-29 | CS-02/CSPP | `in progress` |
-| 02 | Designing Data-Intensive Applications, Ch01 | ~24-06-29 | CS-09/DDIA | `in progress` |
+| 01 | Computer Systems - A programmer's Perspective, Ch02 | ~24-06-30 | CS-02/CSPP | `in progress` |
+| 02 | Designing Data-Intensive Applications, Ch01 | ~24-06-30 | CS-09/DDIA | `in progress` |

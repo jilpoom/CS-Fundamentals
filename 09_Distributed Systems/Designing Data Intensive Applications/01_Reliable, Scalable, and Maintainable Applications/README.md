@@ -162,7 +162,7 @@ WHERE follows.follower_id = current_user
 
 위의 두 방식 모두 **성능 지표**가 중요하다.
 
-> 지연과 응답 시간(Latency And Response Time)
+> 지연과 응답 시간(Latency And Response Time) 
 > - 응답 시간: 클라이언트가 보는 시간(요청 처리 시간 + 네트워크 지연 + 대기 지연 etc..)
 > - 지연: 요청이 처리되기를 기다리는 동안의 지속 시간, 즉 서비스 대기 상태의 시간
 
@@ -199,7 +199,7 @@ Level Agreements)로 사용하는 경우가 많다.
 
 일반적으로 대기 지연(Queueing Delays)은 높은 백분위수 응답 시간에 가장 영향을 미치는 요소 중 하나이다. 서버는 병렬로 처리할 수 있는 작업의 수(CPU 코어 수의 제한)이 한정되어 있으며, 소수의 느린 요청이 이후 요청 전체를 지연시킬 수 있다.([헤드 라인 오브 블로킹](https://velog.io/@dnr6054/HOL-Blocking))
 
-> 꼬리 지연 증폭(Tail Latency Amplification)
+> 꼬리 지연 증폭(Tail Latency Amplification) </br>
 > 백엔드 호출의 작은 비율만 느려도, 최종 사용자 요청에 여러 백엔드 호출이 필요하다면 느린 호출을 만날 가능성이 증가하고, 따라서 더 많은 비율의 최종 사용자 요청이 느려지게 된다. </br>
 > 이를 지속적으로 모니터링 하기 위해서는 롤링 윈도우 기법을 사용해 분 당, 응답 시간을 지속적으로 확인할 수 있다 </br>
 

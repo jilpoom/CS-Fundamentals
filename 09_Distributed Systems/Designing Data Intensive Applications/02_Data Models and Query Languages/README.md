@@ -20,3 +20,100 @@
   - 관계형 모델
   - 문서(Document) 모델
   - 그래프(Graph) 기반 모델
+
+## 관계형 모델 VS 문서 모델
+
+오늘날 가장 잘 알려진 데이터 모델은 SQL 데이터 모델로 1970년 Edgar Codd가 제안한, 관계형 모델에 기반을 두고 있다.
+
+관계형 모델
+ - 테이블(관계)로 구성
+ - 각 테이블은 순서 없는 튜플(행)의 모음이다.
+
+관계형 데이터베이스의 뿌리는 1960년대와 70년대, 메인 프레임 컴퓨터에서 수행되던 비즈니스 데이터 처리에 있다. 주로 거래 처리(Transaction Processing, 판매, 은행 거래, 항공 예약, 재고 관리 등)와 일괄 처리(Batch Processing)를 위함이었다.
+
+관계형 모델의 목표는 깔끔한 인터페이스 뒤에 복잡한 구현 세부 사항을 숨기는 것이 목표였다.
+
+1970년부터 1980년대 초, 관계형 모델의 대안이 되기 위해 네트워크 모델, 객체 지향 모델이 등장했으나, 관계형 모델이 그들을 지배하게 되었다. 오늘날에도 여전히 온라인 출판, 토론, 소셜 네트워킹, 전자상거래, 게임 등 여러 다양한 분야에서 사용되고 있다.
+
+### NoSQL의 탄생
+
+2010년대, SQL의 지배에 대항하기 위한 NoSQL이 등장했다. 'NoSQL' 이라는 이름 조차, 비관계형 데이터베이스에 관한 밋업을 위한 트위터 해시 태그가 퍼진 것(#NoSQL)이며, 현재는 'Not Only SQL'로 재해석 되었다.
+
+NoSQL 데이터베이스 채택의 이유
+- 매우 큰 데이터셋 또는 매우 높은 쓰기 처리량을 포함하여, 관계형 데이터베이스가 쉽게 달성할 수 없는 확장성
+- 상업용 데이터베이스 제품보다, 무료 및 오픈 소스 소프트웨어에 대한 선호
+- 관계형 모델에서 지원하지 않는 특화된 질의
+- 관계형 스키마의 제약에 대한 불만과 동적이고 풍부한 데이터 모델에 대한 요구
+
+다른 응용 프로그램은 각기 다른 요구사항을 가지고 있다. 즉, 이제 관계형 데이터 베이스와 함께 다양한 NoSQL이 사용되는 사례가 많아지고 있다. ([Polyglot Persistence](https://www.techtarget.com/searchapparchitecture/definition/polyglot-persistence))
+
+### 객체-관계 불일치
+
+오늘날, 대부분의 어플리케이션은 객체 지향 프로그래밍 언어로 이루어지나, SQL은 관계형 모델이므로, 애플리케이션 코드와 데이터 베이스 모델 사이에 어색한 변환 계층이 필요해졌다.([Impedance Mismatch](https://sungsoo.github.io/2013/08/21/impedance-mismatch.html))
+
+ActiveRecord와 Hibernate 같은 객체-관계 매핑(ORM) 프레임워크는 이러한 변환 계층에 필요한 상용구 코드를 줄여주지만, 두 모델 간의 차이점을 완전히 숨길 수는 없었다.
+
+![LinkedIn Profile Using A Relational Schema](./static/figure%202-1.PNG)
+
+위의 그림은, 이력서(LinkedIn Profile)을 관계형 스키마로 표현하는 방법을 보여주며 다음과 같은 특징이 있다.
+
+- `user_id`로 전체 프로필의 고유 식별자를 부여한다.
+- `first_name`, `last_name`과 같은 필드는 사용자별로 고유하므로 `users` 테이블의 열로 나타낸다.
+- `positions`, `education`, `contact_info`와 같은 일대다(1:N) 관계는 여러 가지 방법으로 표현할 수 있다.
+  - 전통적인 SQL 모델(1999 이전)
+    - 별도의 테이블을 생성하여, `users` 테이블의 외래키로 참조한다.
+  - SQL 표준 버전
+    - 단일 행 내에, 다중값(XML, JSON 등 구조화된 데이터)을 저장하고 해당 문서 내부에서 질의 및 인덱싱
+    - Oracle, IBM DB2, MS SQL Server, PostgreSQL 등에서 지원
+  - XML, JSON 등 구조화된 데이터로 인코딩하여, 데이터베이스의 텍스트 열에 저장 후, 애플리케이션이 그 구조와 내용을 해석
+
+이력서와 같은, 데이터 구조는 대부분 독립적인 문서로 JSON 표현이 적합할 수 있다. MongoDB, RethinkDB, CouchDB, Espresso와 같은 문서 지향 데이터베이스가 이 데이터 모델을 지원한다.
+
+```json
+{
+  "user_id": 251,
+  "first_name": "Bill",
+  "last_name": "Gates",
+  "summary": "Co-chair of the Bill & Melinda Gates... Active blogger.",
+  "region_id": "us:91",
+  "industry_id": 131,
+  "photo_url": "/p/7/000/253/05b/308dd6e.jpg",
+  "positions": [
+    {"job_title": "Co-chair", "organization": "Bill & Melinda Gates Foundation"},
+    {"job_title": "Co-founder, Chairman", "organization": "Microsoft"}
+  ],
+  "education": [
+    {"school_name": "Harvard University", "start": 1973, "end": 1975},
+    {"school_name": "Lakeside School, Seattle", "start": null, "end": null}
+  ],
+  "contact_info": {
+    "blog": "http://thegatesnotes.com",
+    "twitter": "http://twitter.com/BillGates"
+  }
+}
+```
+
+관계형 예제에서, 프로프리을 가져오려면 여러 쿼리를 수행(각 테이블을 `user_id`로 쿼리)해야 하거나, 복잡한 다중 `JOIN`을 수행해야 하지만, JSON 표현에서는 모든 관련 정보가 한 곳에 있어 하나의 쿼리로 충분하다.
+
+사용자 프로필에서 사용자의 직책, 교육 이력, 연락처 정보로의 일대다 관계는 데이터에 트리 구조를 암시하며, JSON 표현은 이 트리 구조를 명시적으로 나타낸다.
+
+![One-to-many relationships formaing a tree structure](./static/figure%202-2.PNG)
+
+### 다대일 관계와 다대다 관계
+
+Figure 2-1에서 `region_id`와 `industry_id`는 `Greater Seattle Area`와 같은 문자열이 아닌, ID 값으로 등록되어 있다. 물론, 사용자 인터페이스에서 지역과 산업을 입력하는 자유 텍스트 필드가 있다면, 이를 일반 텍스트 문자열로 저장하는 것이 합리적이나, 미리 표준화된 지역, 산업을 가지고 이를 사용자에게 선택하게 하는 것이 다음과 같은 많은 장점을 가진다.
+
+- 프로필 전반(사용자들의 프로필)에서 일관된 스타일과 이름 유지
+- 여러 도시가 같은 이름을 가질 때의 모호성 방지
+- 업데이트 용이성
+  - 이름은 데이터베이스 한 곳에만 저장되므로, 이를 수정하기만 하면 된다.
+- 현지화(Localization) 지원
+  - 사이트가 다른 언어로 변경될 때, 표준화된 목록을 현지화 할 수 있다.
+- 더 나은 검색
+  - 예를 들어, 워싱턴 주의 자선 사업가를 검색한다면 지역 목록에 시애틀이 워싱턴에 있다는 사실이 인코딩 될 수 있다. 즉 `Greater Seattle Area`라는 문자열 만으로 알 수 없는 매칭을 할 수 있다.
+
+
+ID를 사용하는 이유는, 중복의 문제를 피하기 위해서이며, 이는 데이터 베이스 정규화의 핵심 아이디어이다. 언제든 변경될 수 있는 의미 있는 데이터에 고유 식별자를 부여함으로써, 데이터가 변경되더라도, 고유 식별자는 변경되지 않기 때문에 일관성을 유지할 수 있다.
+
+
+

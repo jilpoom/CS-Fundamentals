@@ -18,3 +18,4 @@
 | 01 | Computer Systems - A programmer's Perspective, Ch02 | ~24-07-09 | CS-02/CSPP | `in progress` |
 | 02 | Designing Data-Intensive Applications, Ch01 | ~24-07-05 | CS-09/DDIA | `done` |
 | 03 | Designing Data-Intensive Applications, Ch02 | ~24-07-10 | CS-09/DDIA | `in progress` |
+| 04 | Operating Systems:Three Easy Pieces | ~24-07-16 | CS-05/OSTEP | `in progress` |

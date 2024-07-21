@@ -246,4 +246,24 @@ UPDATE users SET first_name = substring_index(name, ' ', 1); -- MySQL
 관계형 데이터베이스와 문서 데이터베이스는 시간이 지남에 따라 점차 유사해지고 있으며, 이는 긍정적인 현상으로 볼 수 있다. 만약 하나의 데이터베이스가 문서와 같은 처리를 하면서도 관게형 쿼리를 수행할 수 있다면, 요구사항에 가장 적합한 기능 조합을 사용할 수 있다.([MySQL JSON vs. TEXT](https://medium.com/daangn/json-vs-text-c2c1448b8b1f))
 
 
+## 데이터를 위한 쿼리 언어
+
+많은 프로그래밍 언어는 명령형이다. 다음은 동물의 종 목록에서 상어만을 반환하는 코드이다.
+
+```js
+function getSharks() {
+  var sharks = [];
+  for (var i = 0; i < animals.length; i++) {
+    if (animals[i].family === "Sharks") {
+      sharks.push(animals[i]);
+    }
+  }
+  return sharks;
+}
+```
+
+관계 대수에서는 다음과 같이 작성한다.
+
+$$sharks = \sigma_{family = sharks}(animal)
+
 

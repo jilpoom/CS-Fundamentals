@@ -248,7 +248,7 @@ UPDATE users SET first_name = substring_index(name, ' ', 1); -- MySQL
 
 ## 데이터를 위한 쿼리 언어
 
-많은 프로그래밍 언어는 명령형이다. 다음은 동물의 종 목록에서 상어만을 반환하는 코드이다.
+대부분의 프로그래밍 언어는 명령형이다. 다음은 동물의 종 목록에서 상어만을 반환하는 코드이다.
 
 ```js
 function getSharks() {
@@ -264,6 +264,76 @@ function getSharks() {
 
 관계 대수에서는 다음과 같이 작성한다.
 
-$$sharks = \sigma_{family = sharks}(animal)
+$$sharks = \sigma_{family = sharks}(animal)$$
+
+$\sigma$는 선택 연산자로, 조건에 맞는 동물만을 반환한다. 즉 `family = sharks`인 동물들만을 반환한다. SQL은 이러한 관계 대수(Relational Algebra)의 구조를 밀접하게 따랐다.
+
+```SQL
+SELECT * FROM animals WHERE family = 'Sharks';
+```
+
+SQL이나, 관계 대수와 같은 선언형 쿼리 언어(Declarative Query Language)는 원하는 데이터의 패턴(정렬, 그룹화, 집계 등)을 지정하며, 그 목표를 달성하는 방법은 지정하지 않는다. 이는 쿼리 옵티마이저가 어떤 인덱스를 사용할지, 어떤 조인을 사용할지 그리고 각 쿼리 부분을 어떤 순서로 실행할지 결정한다. 선언형 쿼리 언어는 명령형 API보다 간결하고 작업이 쉽다.
+
+중요한 것은 엔진의 구현 세부 사항을 숨겨 데이터 베이스 시스템에 성능 개선을 도입해도 쿼리문 자체에는 아무 영향이 없도록 한다는 점이다. 명령형 코드에서는 동물 목록의 특정 순서가 이미 코드로 표현이 되어있다. 만약, 데이터베이스가 백그라운드에서 사용하지 않는 디스크 공간을 회수하려 할 때, 레코드를 이동시켜 동물의 순서를 변경해야 한다면, 이러한 명령형 코드에서는 데이터베이스가 코드가 순서에 의존하는지 확신할 방법이 없다. 하지만 선언형 코드에서는 특정한 순서를 보장하기 않기 때문에 순서가 변경이되어도 상관이 없다.
+
+또한, 선언형 언어는 병렬 실행에 적합하다. 명령형 코드는 특정 순서대로 수행해야 하는 지시 사항을 지정하기 때문에, 여러 코어와 기계에서 병렬화 되기 쉽지 않다. 그러나 선언형 언어는 결과의 패턴만 지정하고, 결과를 결정하는 알고리즘은 지정하지 않기 때문에 병렬 실행에 더 적합하다.
 
 
+### 웹에서의 선언적 쿼리
+
+선언형 쿼리의 장점은 데이터베이스에만 국한되지 않는다. 만약 웹사이트에서 네비게이션 항목에 `Sharks`를 선택하여 표시하고 싶다면 다음과 같이 작성한다.
+
+```html
+<ul>
+  <li class="selected">
+    <p>Sharks</p>
+    <ul>
+      <li>Great White Shark</li>
+      <li>Tiger Shark</li>
+      <li>Hammerhead Shark</li>
+    </ul>
+  </li>
+  <li>
+    <p>Whales</p>
+    <ul>
+      <li>Blue Whale</li>
+      <li>Humpback Whale</li>
+      <li>Fin Whale</li>
+    </ul>
+  </li>
+</ul>
+```
+
+만약 선택된 페이지의 제목을 파란색으로 강조하고 싶다면 다음과 같이 CSS 선언형 언어를 사용할 수 있다.
+
+```css
+li.selected > p {
+  background-color: blue;
+}
+```
+
+만약 명령적 접근 방식을 사용해야한다면, Javscript의 DOM API를 사용해 다음과 같이 작성할 수 있다.
+
+```js
+var liElements = document.getElementsByTagName("li");
+for (var i = 0; i < liElements.length; i++) {
+  if (liElements[i].className === "selected") {
+    var children = liElements[i].childNodes;
+    for (var j = 0; j < children.length; j++) {
+      var child = children[j];
+      if (child.nodeType === Node.ELEMENT_NODE && child.tagName === "P") {
+        child.setAttribute("style", "background-color: blue");
+      }
+    }
+  }
+}
+```
+
+허나, 이런 방식은 코드가 매우 복잡해지고, 이해하기 어려워진다. 뿐만 아니라 다음과 같은 심각한 문제가 있다.
+
+- 선택된 클래스가 제거(사용자가 다른 페이지를 클릭)하는 경우, 파란색 배경이 제거되지 않는다.
+  - 선언형 CSS와 같은 경우, 규칙이 더이상 적용되지 않으면 이를 자동으로 감지해 파란색 배경을 제거한다.
+- `document.getElementsByClassName("selected")`와 같은 API를 사용하고 싶다면, 성능 향상을 위해서 코드를 다시 작성해야 한다.
+  - CSS는 호환성을 건드리지 않고 성능을 향상시킬 수 있다.
+
+마찬가지로 데이터베이스에서도 SQL과 같은 선언적 쿼리 언어가 명령형 쿼리 API보다 훨씬 더 우수한 것으로 판명되었다.

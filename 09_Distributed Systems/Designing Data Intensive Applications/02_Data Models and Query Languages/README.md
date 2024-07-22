@@ -337,3 +337,96 @@ for (var i = 0; i < liElements.length; i++) {
   - CSS는 호환성을 건드리지 않고 성능을 향상시킬 수 있다.
 
 마찬가지로 데이터베이스에서도 SQL과 같은 선언적 쿼리 언어가 명령형 쿼리 API보다 훨씬 더 우수한 것으로 판명되었다.
+
+### MapReduce 쿼리
+
+MapReduce는 대량의 데이터를 여러 대의 컴퓨터에 걸쳐 일괄 처리하기 위한 프로그래밍 모델이다. MongoDB, CouchDB를 포함한 일부 NoSQL 데이터 저장소에서 읽기 전용 쿼리를 여러 문서에 걸쳐 수행하는 메커니즘으로 지원된다.
+
+MapReduce는 선언형 쿼리 언어와 명령형 쿼리의 중간 정도의 위치에 있다. MapReduce는 많은 함수형 프로그래밍 언어에 존재하는 `map`(또는 `collect`)와 `reduce`(또는 `fold`, `inject`) 함수에 기반을 둔다.
+
+예를 들어, 바다에서 동물을 관찰한 기록을 데이터베이스에 기록한다고 가정하자, 월별로 상어를 몇 마리나 목격했는지 알기 위해서는 다음과 같이 쿼리를 작성할 수 있다.
+
+```sql
+SELECT date_trunc('month', observation_timestamp) AS observation_month,
+sum(num_animals) AS total_animals
+FROM observations
+WHERE family = 'Sharks'
+GROUP BY observation_month;
+```
+
+이 쿼리는 먼저 관찰 기록에서 상어 과(family)의 종만 필터링하고, 그런 다음 발생한 달 별로 관찰 기록을 그룹화하며, 마지막으로 해당 달의 모든 관찰에서 본 동물의 수를 합산한다.
+
+이를 MongoDB의 MapReduce 기능을 사용하여 다음과 같이 표현할 수 있다.
+
+```js
+db.observations.mapReduce(
+  function map() {
+    var year = this.observationTimestamp.getFullYear();
+    var month = this.observationTimestamp.getMonth() + 1;
+    emit(year + "-" + month, this.numAnimals);
+  },
+  function reduce(key, values) {
+    return Array.sum(values);
+  },
+  {
+    query: { family: "Sharks" },
+    out: "monthlySharkReport"
+  }
+);
+```
+
+위의 `mapReduce` 함수를 설명하면 다음과 같다.
+
+- 상어 종만 고려하도록 필터를 선언적으로 지정할 수 있다(이것은 MapReduce에 대한 MongoDB의 특정 확장 기능이다).
+
+- 자바스크립트 함수 map은 query와 일치하는 각 문서에 대해 한 번씩 호출되며, this는 문서 객체로 설정된다.
+
+- map 함수는 키(연도와 월로 구성된 문자열, 예: "2013-12" 또는 "2014-1")와 값(해당 관찰에서 본 동물의 수)을 내보낸다.
+
+- map에 의해 내보내진 키-값 쌍은 키별로 그룹화된다. 동일한 키(즉, 동일한 월과 연도)를 가진 모든 키-값 쌍에 대해 reduce 함수가 한 번 호출된다.
+
+- reduce 함수는 특정 월의 모든 관찰에서 본 동물의 수를 합산한다.
+
+- 최종 출력은 컬렉션 monthlySharkReport에 기록된다.
+
+`observations` 컬렉션에 다음의 두 개의 문서가 있다고 하자.
+
+```js
+{
+  observationTimestamp: Date.parse("Mon, 25 Dec 1995 12:34:56 GMT"),
+  family: "Sharks",
+  species: "Carcharodon carcharias",
+  numAnimals: 3
+}
+{
+  observationTimestamp: Date.parse("Tue, 12 Dec 1995 16:17:18 GMT"),
+  family: "Sharks",
+  species: "Carcharias taurus",
+  numAnimals: 4
+}
+```
+
+- `map` 함수는 각 문서에 대해 한 번씩 호출되어, 그 결과로 `emit('1995-12', 3)`과 `emit('1995-12', 4)`가 발생한다. 이후 `reduce` 함수는 `reduce('1995-12', [3, 4])`로 호출되어 7을 반환하게 된다.
+
+- `map`과 `reduce` 함수는 허용되는 작업에 약간의 제한이 있다. 이 함수들은 [순수 함수](https://jeong-pro.tistory.com/23)여야 하며, 이는 입력으로 전달된 데이터만 사용하고 추가적인 데이터베이스 쿼리를 수행할 수 없으며 부작용이 없어야 한다는 것을 의미한다. 이러한 제한 덕분에 데이터베이스는 함수들을 어디서나, 어떤 순서로든 실행할 수 있으며, 실패 시 재실행할 수 있다. 그러나 이러한 제한에도 불구하고 이 함수들은 여전히 강력하다. 문자열을 파싱하고, 라이브러리 함수를 호출하고, 계산을 수행하는 등의 작업을 할 수 있다.
+
+MapReduce는 클러스터의 여러 머신에서 분산 실행을 위한 비교적 저수준의 프로그래밍 모델이다. SQL과 같은 고수준의 쿼리 언어는 MapReduce 작업의 파이프라인으로 구현될 수 있다. 그러나 MapReduce를 사용하지 않는 많은 분산 SQL 구현도 존재한다. SQL에는 단일 머신에서 실행되어야 한다는 제약이 없으며, 분산 쿼리 실행에 대한 독점권을 MapReduce가 가지고 있는 것도 아니다.
+
+쿼리 중간에 JavaScript 코드를 사용할 수 있다는 것은 고급 쿼리에서는 매우 유용한 기능이지만, 이는 MapReduce에만 국한되지 않는다. 일부 SQL 데이터베이스도 JavaScript 함수로 확장될 수 있다.
+
+MapReduce의 사용상의 문제점 중 하나는 두 개의 자바스크립트 함수를 신중하게 조율해서 작성해야 한다는 점인데, 이는 단일 쿼리를 작성하는 것보다 종종 더 어렵다. 게다가, 선언적 쿼리 언어는 쿼리 최적화 프로그램이 쿼리 성능을 개선할 수 있는 더 많은 기회를 제공한다. 이러한 이유로, MongoDB는 aggregation pipeline이라는 선언적 쿼리 언어에 대한 지원을 추가했다. 이 언어를 사용하면 동일한 상어 개수를 세는 쿼리는 다음과 같다
+
+```js
+db.observations.aggregate([
+  { $match: { family: "Sharks" } },
+  { $group: {
+    _id: {
+      year: { $year: "$observationTimestamp" },
+      month: { $month: "$observationTimestamp" }
+    },
+    totalAnimals: { $sum: "$numAnimals" }
+  } }
+]);
+```
+
+aggregation pipeline 언어는 표현력 면에서 SQL의 하위 집합과 비슷하지만, SQL의 영어 문장 스타일 구문이 아닌 JSON 기반 구문을 사용한다. 이는 취향의 문제일 수도 있다. 이 이야기의 교훈은 NoSQL 시스템이 우연히 SQL을 변형된 형태로 재발명할 수 있다는 것이다.

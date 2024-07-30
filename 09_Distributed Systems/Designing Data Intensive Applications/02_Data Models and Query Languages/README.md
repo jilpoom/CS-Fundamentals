@@ -539,3 +539,99 @@ RETURN person.name
 
 선언형 쿼리 언어에서 일반적으로 그렇듯이, 쿼리를 작성할 때 이러한 실행 세부 사항을 명시할 필요는 없다. 쿼리 최적화기가 가장 효율적일 것으로 예측되는 전략을 자동으로 선택하므로, 사용자는 나머지 애플리케이션 작성에 집중할 수 있다.
 
+
+### SQL의 그래프 쿼리
+
+그래프 데이터를 관계형 데이터로 표현할 수 있으나, 이는 다소 어렵다. 보통 관계형 데이터베이스에서는 쿼리에 필요한 조인을 미리 알고 있으나, 그래프 쿼리에서는 원하는 정점을 찾기 위한 간선이 변동하기 때문에, 필요한 조인의 수가 사전에 고정되지 않는다.
+
+Cypher의 `() -[:WITHIN*0..] -> ()` 의 경우, **WITHIN 간선을 0번 또는 그 이상 따라가라**로 표현할 수 있지만, SQL:1999 이후로, 이러한 가변 길이 탐색은 재귀적 공통 테이블 표현식(`WITH RECURSIVE` 구문)으로 표현할 수 있다.(PostgreSQL, IBM DB2, Oracle, SQL Server 등 지원)
+
+```sql
+WITH RECURSIVE
+-- in_usa is the set of vertex IDs of all locations within the United States
+in_usa(vertex_id) AS (
+SELECT vertex_id FROM vertices WHERE properties->>'name' = 'United States'
+UNION
+SELECT edges.tail_vertex FROM edges
+JOIN in_usa ON edges.head_vertex = in_usa.vertex_id
+WHERE edges.label = 'within'
+),
+-- in_europe is the set of vertex IDs of all locations within Europe
+in_europe(vertex_id) AS (
+SELECT vertex_id FROM vertices WHERE properties->>'name' = 'Europe'
+UNION
+SELECT edges.tail_vertex FROM edges
+JOIN in_europe ON edges.head_vertex = in_europe.vertex_id
+WHERE edges.label = 'within'
+),
+-- born_in_usa is the set of vertex IDs of all people born in the US
+born_in_usa(vertex_id) AS (
+SELECT edges.tail_vertex FROM edges
+JOIN in_usa ON edges.head_vertex = in_usa.vertex_id
+WHERE edges.label = 'born_in'
+),
+-- lives_in_europe is the set of vertex IDs of all people living in Europe
+lives_in_europe(vertex_id) AS (
+SELECT edges.tail_vertex FROM edges
+JOIN in_europe ON edges.head_vertex = in_europe.vertex_id
+WHERE edges.label = 'lives_in'
+)
+
+SELECT vertices.properties->>'name'
+FROM vertices
+-- join to find those people who were both born in the US *and* live in Europe
+JOIN born_in_usa ON vertices.vertex_id = born_in_usa.vertex_id
+JOIN lives_in_europe ON vertices.vertex_id = lives_in_europe.vertex_id;
+```
+
+1. 이름 속성의 값이 `"United States"`인 정점을 찾아 in_usa 집합의 첫 번째 요소로 만든다. `in_usa` 집합에 있는 정점들로부터 들어오는 모든 `within` 엣지를 따라가고, 이 엣지들을 모두 방문할 때까지 같은 집합에 추가한다.
+2. 이와 동일하게 이름 속성의 값이 `"Europe"`인 정점으로 시작해 `in_europe` 집합을 구축
+3. `in_usa` 집합에 있는 각 정점에 대해 들어오는 `born_in` 엣지를 따라가서 미국 내에서 태어난 사람들을 찾는다.
+4. 마찬가지로 `in_europe` 집합에 있는 각 정점에 대해 들어오는 `lives_in` 엣지를 따라가서 유럽에 사는 사람들을 찾는다.
+5. 마지막으로, 미국에서 태어난 사람들의 집합과 유럽에 사는 사람들의 집합을 조인하여 교집합을 구한다.
+
+하나의 쿼리 언어로는 같은 쿼리를 4줄로 쓸 수 있는데 다른 쿼리 언어로는 29줄이 필요하다면, 이는 단지 서로 다른 데이터 모델이 다른 사용 사례를 만족하도록 설계되었음을 보여준다. 애플리케이션에 적합한 데이터 모델을 선택하는 것이 중요하다.
+
+
+### Triple-Stores와 SPARQL
+
+트리플 스토어 모델은 프로퍼티 그래프 모델과 거의 동등하지만, 논의할 가치가 있다. 트리플 스토어를 위한 다양한 도구와 언어가 애플리케이션 구축에 유용한 추가 요소가 될 수 있기 때문이다.
+
+트리플 스토어에서는 모든 정보를 매우 간단한 세 부분으로 된 문장 형태로 저장한다(주어, 술어, 목적어). 예를 들어, `(Jim, likes, bananas)`라는 트리플에서 `Jim`은 주어, `likes`는 술어(동사), `bananas`는 목적어이다.
+
+트리플의 주어는 그래프의 정점과 동등하나, 목적어는 다음의 두 가지 중 하나이다.
+  - 문자열이나 숫자 같은 원시 데이터 타입의 값
+    - 이 경우, 트리플의 술어와 목적어는 주어 정점의 속성의 키와 값에 해당한다. `(lucy, age, 33) == {lucy: {"age": 33}}`
+  - 그래프의 또 다른 정점
+    - 이 경우, 술어는 그래프의 엣지이며, 주어는 꼬리 정점, 목적어는 머리 정점이 된다. `(lucy, marriedTo, alain) == (lucy) -[:marriedTo]-> (alain)`  
+
+그림 2-5의 데이터의 하위 집합을 [Turtle](https://en.wikipedia.org/wiki/Turtle_(syntax)) 트리플로 표현해보자
+```turtle
+@prefix : <urn:example:>.
+_:lucy a :Person.
+_:lucy :name "Lucy".
+_:lucy :bornIn _:idaho.
+_:idaho a :Location.
+_:idaho :name "Idaho".
+_:idaho :type "state".
+_:idaho :within _:usa.
+_:usa a :Location.
+_:usa :name "United States".
+_:usa :type "country".
+_:usa :within _:namerica.
+_:namerica a :Location.
+_:namerica :name "North America".
+_:namerica :type "continent".
+```
+
+위의 예시에서 정점은 `_`로 작성되며, 어떤 트리플이 동일한 정점을 참조하는지 알 수 없기 때문에 존재한다. 술어가 간선(`:bornIn`, `:within`)을 나타낸다면 목적어는 정점이 된다. 술어가 속성(`:name`, `:type`, ...)을 나타낼 때, 목적어는 문자열 리터럴이다.
+
+위의 예시를 다음과 같이 세미콜론을 사용하여 깔끔하게 정리할 수 있다.
+
+```turtle
+_:lucy a :Person; :name "Lucy"; :bornIn _:idaho.
+_:idaho a :Location; :name "Idaho"; :type "state"; :within _:usa.
+_:usa a :Location; :name "United States"; :type "country"; :within _:namerica.
+_:namerica a :Location; :name "North America"; :type "continent".
+```
+

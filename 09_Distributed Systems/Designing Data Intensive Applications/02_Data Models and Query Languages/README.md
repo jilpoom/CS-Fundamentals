@@ -634,4 +634,89 @@ _:idaho a :Location; :name "Idaho"; :type "state"; :within _:usa.
 _:usa a :Location; :name "United States"; :type "country"; :within _:namerica.
 _:namerica a :Location; :name "North America"; :type "continent".
 ```
+### 네트워크 모델과 비교한 그래프 데이터베이스
 
+- CODASYL에서는 데이터베이스에 스키마가 있어서 어떤 레코드 타입이 다른 레코드 타입 내에 중첩될 수 있는지를 지정했다. 그래프 데이터베이스에서는 이러한 제한이 없다. 어떤 정점(vertex)도 다른 어떤 정점과도 엣지를 가질 수 있으며, 이는 애플리케이션이 변화하는 요구사항에 더 유연하게 적응할 수 있게 한다.
+CODASYL에서는 특정 레코드에 도달하는 유일한 방법이 접근 경로를 통해서이다. 그래프 데이터베이스에서는 각 정점을 고유 ID로 직접 참조할 수 있으며, 특정 값을 가진 정점을 찾기 위해 인덱스를 사용할 수도 있다.
+CODASYL에서는 레코드의 자식들이 순서가 있는 집합이어서 데이터베이스가 그 순서를 유지해야 했다. 또한 데이터베이스에 새로운 레코드를 삽입하는 애플리케이션은 이 집합 내에서 새로운 레코드의 위치를 신경 써야 했다. 그래프 데이터베이스에서는 정점과 엣지가 순서가 없으며 쿼리를 작성할 때 결과를 정렬할 수 있다.
+CODASYL에서는 모든 쿼리가 명령형이었으며, 작성하기 어렵고 스키마 변경에 의해 쉽게 깨진다. 그래프 데이터베이스에서는 원한다면 명령형 코드로 순회 로직을 작성할 수 있지만, 대부분의 그래프 데이터베이스는 Cypher나 SPARQL 같은 고수준의 선언형 쿼리 언어도 지원한다.
+
+## 쿼리 언어의 기반: Datalog
+
+Datalog는 SPARQL이나 Cypher보다도 오래된 언어이며, 이후 쿼리 언어들이 구축된 기초를 제공했다. 실제로 Datalog는 몇몇 데이터 시스템에 사용된다.
+ 
+Datalog는 트리플 스토어 모델과 유사하지만 조금 일반화된 형태이다. 트리플을 (주어, 술어, 객체)로 쓰는 대신 술어(주어, 목적어) 형태로 사용한다.
+
+이전과 동일한 쿼리를 작성해보면 다음과 같이 작성할 수 있다.
+
+```prolog
+name(namerica, 'North America').
+type(namerica, continent).
+
+name(usa, 'United States').
+type(usa, country).
+within(usa, namerica).
+
+name(idaho, 'Idaho').
+type(idaho, state).
+within(idaho, usa).
+
+name(lucy, 'Lucy').
+born_in(lucy, idaho).
+```
+
+예제 2-4를 Datalog로 표현하면 다음과 같다.
+
+```prolog
+within_recursive(Location, Name) :- name(Location, Name). /* Rule 1 */
+
+within_recursive(Location, Name) :- within(Location, Via), /* Rule 2 */
+                                    within_recursive(Via, Name).
+
+migrated(Name, BornIn, LivingIn) :- name(Person, Name), /* Rule 3 */
+                                    born_in(Person, BornLoc),
+                                    within_recursive(BornLoc, BornIn),
+                                    lives_in(Person, LivingLoc),
+                                    within_recursive(LivingLoc, LivingIn).
+
+?- migrated(Who, 'United States', 'Europe').
+/* Who = 'Lucy'. */
+```
+Cypher와 SPARQL은 `SELECT`로 바로 시작하지만, Datalog는 작은 단계씩 나아간다. 우리는 데이터 베이스에 새로운 술어에 대해 알려주는 **Rule**을 정의(`within_recursive`, `migrated`) 한다. 이 술어들은 데이터베이스에 저장된 트리플이 아니라, 데이터나 다른 규칙으로부터 도출된 것이다. Rule은 다른 Rule을 참조할 수 있고, 함수가 다른 함수를 호출하거나, 재귀적으로 자신을 호출할 수 있는 것처럼, 작은 조각씩 복잡한 쿼리를 작성해나간다.
+
+Rule에서 대문자로 시작하는 단어는 변수이며, 술어는 Cypher와 SPARQL과 일치한다. 또한 `:-` 연산자의 오른쪽에 있는 모든 술어와 일치하는 것을 찾을 수 있을 때, 규칙이 적용된다. 
+
+![Figure 2-6](./static/figure%202-6.png)
+
+위의 그림은 다음을 표현한다. 
+1. 데이터베이스에 `name(namerica, 'North America')`가 존재하므로 Rule 1이 적용됩니다. 이는 `within_recursive(namerica, 'North America')`를 생성한다.
+
+2. 데이터베이스에 `within(usa, namerica)`가 존재하고 이전 단계에서 `within_recursive(namerica, 'North America')`가 생성되었으므로 Rule 2가 적용된다. 이는 `within_recursive(usa, 'North America')`를 생성한다.
+
+3. 데이터베이스에 `within(idaho, usa)`가 존재하고 이전 단계에서 `within_recursive(usa, 'North America')`가 생성되었으므로 Rule 2가 적용한다. 이는 `within_recursive(idaho, 'North America')`를 생성한다.
+
+규칙 1과 2를 반복적으로 적용함으로써, `within_recursive` 술어는 데이터베이스에 포함된 모든 북아메리카 내의 위치(또는 다른 위치 이름)를 알려줄 수 있다.
+
+이제, Rule 3는 특정 위치 `BornIn` 에서 태어나고 특정 위치 `LivingIn` 에서 사는 사람을 찾을 수 있다.
+
+Datalog 접근 방식은 이 장에서 논의된 다른 쿼리 언어들과 다른 종류의 사고를 요구하지만, Rule을 다른 쿼리에서 재사용 가능하다는 점에서 매우 강력한 접근 방식이다. 단순한 일회성 쿼리보다는 데이터가 복잡한 경우에 더 잘 대응할 수 있다.
+
+## 정리
+
+역사적으로 데이터는 하나의 큰 트리(계층적 모델)로 표현되었지만, 이는 다대다 관계를 나타내기에 적합하지 않았기 때문에 관계형 모델이 그 문제를 해결하기 위해 발명되었다. 최근에는 개발자들이 일부 애플리케이션이 관계형 모델에도 잘 맞지 않는다는 것을 발견했다. 새로운 비관계형 "NoSQL" 데이터 스토어는 두 가지 주요 방향으로 나뉘었다:
+
+문서 데이터베이스는 데이터가 독립된 문서로 구성되고 문서 간의 관계가 드문 경우를 목표로 한다.
+
+그래프 데이터베이스는 정반대의 방향으로, 모든 것이 잠재적으로 모든 것과 관련될 수 있는 경우를 목표로 한다.
+
+문서, 관계형, 그래프 이 세 가지 모델은 오늘날 널리 사용되며, 각각은 그 고유한 영역에서 뛰어나다. 한 모델은 다른 모델의 형태로 에뮬레이션될 수 있다. 예를 들어, 그래프 데이터를 관계형 데이터베이스에 표현할 수 있지만, 그 결과는 종종 어색하다. 그래서 우리는 다양한 목적에 맞는 다양한 시스템을 가지고 있으며, 모든 것을 아우르는 단일 솔루션이 없는 것이다.
+
+문서 데이터베이스와 그래프 데이터베이스가 공통적으로 갖는 한 가지 특징은 데이터에 대한 스키마를 강제하지 않는다는 것이다. 이는 애플리케이션이 변화하는 요구사항에 적응하기 쉽게 만든다. 그러나 대부분의 애플리케이션은 여전히 데이터가 특정 구조를 가지고 있다고 가정한다. 단지 스키마가 명시적(쓰기 시 강제)인지 암시적(읽기 시 처리)인지의 문제일 뿐이다.
+
+각 데이터 모델은 고유의 쿼리 언어 또는 프레임워크를 가지고 있으며, 우리는 여러 예시를 논의했다: SQL, MapReduce, MongoDB의 집계 파이프라인, Cypher, SPARQL, Datalog. 또한 데이터베이스 쿼리 언어는 아니지만 흥미로운 유사점을 가진 CSS와 XSL/XPath에도 간략히 언급했다.
+
+우리가 많은 내용을 다뤘지만 여전히 언급되지 않은 데이터 모델이 많다. 몇 가지 짧은 예를 들자면:
+
+- 유전자 데이터와 작업하는 연구자들은 종종 긴 문자열(예: DNA 분자)을 유사하지만 동일하지 않은 대규모 문자열 데이터베이스와 일치시키는 서열 유사성 검색을 수행해야 한다. 여기서 설명한 데이터베이스 중 어떤 것도 이러한 용도를 처리할 수 없기 때문에 연구자들은 GenBank와 같은 전문화된 유전자 데이터베이스 소프트웨어를 작성했다.
+- 입자 물리학자들은 수십 년 동안 빅 데이터 스타일의 대규모 데이터 분석을 해왔으며, 대형 강입자 충돌기(LHC)와 같은 프로젝트는 이제 수백 페타바이트 규모로 작업한다. 이 정도 규모에서는 하드웨어 비용이 통제 불능으로 치솟지 않도록 하기 위해 맞춤형 솔루션이 필요하다.
+- 전체 텍스트 검색은 데이터 모델의 일종으로, 데이터베이스와 함께 자주 사용된다. 정보 검색은 이 책에서 자세히 다루지 않을 큰 전문 분야이지만, 3장과 파트 III에서 검색 인덱스에 대해 간략히 언급할 것이다.
